@@ -31,7 +31,7 @@
   .row{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:10px}
   .row.active{background:var(--panel)}
   .num{width:18px;color:#4c5366;font-size:11px;text-align:right;font-family:'JetBrains Mono',monospace}
-  .row input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);
+  .row textarea{resize:none;overflow:hidden;line-height:1.45;word-break:break-word;flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);
     font-family:'JetBrains Mono','IBM Plex Sans Thai',monospace;font-size:17px;padding:4px 0;caret-color:var(--accent)}
   .res{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--ok);white-space:nowrap;
     padding:3px 8px;border-radius:8px;background:rgba(127,214,164,.08);cursor:pointer;font-variant-numeric:tabular-nums}
@@ -105,6 +105,9 @@
   #shareImg{width:100%;border-radius:12px;display:block}
   body.light{--bg:#f6f4ef;--panel:#ffffff;--line:#e4dfd4;--text:#1d1f24;--dim:#6b7080;--key:#eeeae1;--key2:#e0d9ca;--ok:#1d8a52;--err:#c94a4a;--accent:#d9821a;--accent-ink:#fff}
   body.light .num{color:#b2b6c0}
+  .row{flex-wrap:wrap}
+  .row.long .res{margin-left:auto}
+  .row.long textarea{flex-basis:calc(100% - 30px)}
   body.oh-r .pad,body.oh-r .chips{width:80%;margin-left:auto}
   body.oh-l .pad,body.oh-l .chips{width:80%;margin-right:auto}
   body.oh-r .k,body.oh-l .k{font-size:19px}
@@ -347,8 +350,8 @@
   /* ---------- lines ---------- */
   function rowEl(text=''){
     const row = document.createElement('div'); row.className='row';
-    row.innerHTML = '<span class="num"></span><input autocomplete="off" autocorrect="off" spellcheck="false"><span class="res"></span>';
-    const inp = row.querySelector('input');
+    row.innerHTML = '<span class="num"></span><textarea rows="1" autocomplete="off" autocorrect="off" spellcheck="false"></textarea><span class="res"></span>';
+    const inp = row.querySelector('textarea');
     inp.value = text; inp.inputMode = kbdMode ? 'text' : 'none';
     inp.addEventListener('focus', () => setActive(row));
     inp.addEventListener('input', recompute);
@@ -369,7 +372,7 @@
     const vars = {}; let prev = 0, total = 0;
     rows().forEach((row,i) => {
       row.querySelector('.num').textContent = i+1;
-      const src = row.querySelector('input').value, res = row.querySelector('.res');
+      const src = row.querySelector('textarea').value, res = row.querySelector('.res');
       res.className = 'res'; row._val = null;
       if (!src.trim() || src.trim().startsWith('#')){ res.textContent=''; return; }
       vars.ans = prev;
@@ -386,6 +389,9 @@
       }
     });
     document.getElementById('total').textContent = fmt(total);
+    rows().forEach(r => { const i = r.querySelector('textarea'), res = r.querySelector('.res');
+      i.style.height = 'auto'; i.style.height = i.scrollHeight + 'px';
+      r.classList.toggle('long', i.scrollHeight > 40 || (res.textContent && i.scrollWidth > i.clientWidth + 2)); });
     showSummary(); save();
   }
   function showSummary(){
@@ -396,19 +402,19 @@
   function newLine(after=active, text=''){
     const r = rowEl(text);
     after && after.nextSibling ? sheet.insertBefore(r, after.nextSibling) : sheet.appendChild(r);
-    r.querySelector('input').focus(); setActive(r); recompute();
+    r.querySelector('textarea').focus(); setActive(r); recompute();
     r.scrollIntoView({block:'nearest'});
   }
   function insert(txt){
-    if (!active) return; const inp = active.querySelector('input');
+    if (!active) return; const inp = active.querySelector('textarea');
     const s = inp.selectionStart ?? inp.value.length, e = inp.selectionEnd ?? s;
     inp.setRangeText(txt, s, e, 'end'); inp.focus(); recompute();
   }
   function backspace(){
-    if (!active) return; const inp = active.querySelector('input');
+    if (!active) return; const inp = active.querySelector('textarea');
     if (!inp.value && rows().length>1){
       const prev = active.previousSibling || active.nextSibling; active.remove();
-      const pi = prev.querySelector('input'); pi.focus(); pi.setSelectionRange(pi.value.length,pi.value.length);
+      const pi = prev.querySelector('textarea'); pi.focus(); pi.setSelectionRange(pi.value.length,pi.value.length);
       setActive(prev); recompute(); return;
     }
     let s = inp.selectionStart, e = inp.selectionEnd;
@@ -417,7 +423,7 @@
   }
 
   /* ---------- storage ---------- */
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(rows().map(r=>r.querySelector('input').value))); }catch(e){} }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(rows().map(r=>r.querySelector('textarea').value))); }catch(e){} }
   function load(){ try{ return JSON.parse(localStorage.getItem(KEY)); }catch(e){ return null; } }
 
   /* ---------- input wiring ---------- */
@@ -427,12 +433,12 @@
     if (btn.dataset.ins!==undefined) return insert(btn.dataset.ins);
     if (btn.dataset.kbd!==undefined){
       kbdMode = !kbdMode; btn.classList.toggle('on', kbdMode);
-      rows().forEach(r => r.querySelector('input').inputMode = kbdMode?'text':'none');
-      if (active){ const i = active.querySelector('input'); i.blur(); setTimeout(()=>i.focus(),30); }
+      rows().forEach(r => r.querySelector('textarea').inputMode = kbdMode?'text':'none');
+      if (active){ const i = active.querySelector('textarea'); i.blur(); setTimeout(()=>i.focus(),30); }
       return;
     }
     const a = btn.dataset.act;
-    if (a==='ac'){ if(active){ active.querySelector('input').value=''; recompute(); } }
+    if (a==='ac'){ if(active){ active.querySelector('textarea').value=''; recompute(); } }
     if (a==='bs') backspace();
     if (a==='nl') newLine();
   }
@@ -444,7 +450,7 @@
   const toast = msg => { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1300); };
   async function copy(text, msg){ try{ await navigator.clipboard.writeText(text); toast(msg); }catch(e){ toast('คัดลอกไม่ได้ในหน้านี้'); } }
   document.getElementById('copyBtn').onclick = () => copy(rows().map(r=>{
-    const s=r.querySelector('input').value, v=r.querySelector('.res').textContent; return v? s+'  →  '+v : s; }).join('\n'), 'คัดลอกการคำนวณแล้ว');
+    const s=r.querySelector('textarea').value, v=r.querySelector('.res').textContent; return v? s+'  →  '+v : s; }).join('\n'), 'คัดลอกการคำนวณแล้ว');
   document.getElementById('words').onclick = e => e.target.textContent && copy(e.target.textContent,'คัดลอกคำอ่านแล้ว');
   const clearBtn = document.getElementById('clearBtn'); let armed = null;
   clearBtn.onclick = () => {
@@ -463,7 +469,7 @@
   /* ---------- start ---------- */
   const start = load() || ['# ลองแตะแก้บรรทัดไหนก็ได้','ค่าห้อง = 3500','ค่าไฟ = 812.5','(ค่าห้อง + ค่าไฟ) ÷ 2','1250 + 7%','ans − 10%',''];
   start.forEach(s => sheet.appendChild(rowEl(s)));
-  const last = rows()[rows().length-1]; recompute(); last.querySelector('input').focus(); setActive(last);
+  const last = rows()[rows().length-1]; recompute(); last.querySelector('textarea').focus(); setActive(last);
 })();
 </script>
 <script>
@@ -2823,7 +2829,7 @@ var qrcode = function() {
     const id = $('b-pp').value.replace(/\D/g, '');
     if ((id.length === 10 || id.length === 13) && per > 0 && window.qrcode) {
       const q = qrcode(0, 'M'); q.addData(promptpay(id, per)); q.make();
-      $('b-qr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 3, scalable: true }) + `<div class="amt">${F(per)} บาท</div>`;
+      $('b-qr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 3, scalable: true }) + `<div class="amt">${F(per)} บาท</div><p class="note">สแกนด้วยแอปธนาคาร (กล้องมือถือทั่วไปอ่านไม่ได้)</p>`;
       store('pp', id);
     } else $('b-qr').innerHTML = '<p class="note">ใส่เบอร์ 10 หลัก หรือเลขบัตร 13 หลัก แล้ว QR ยอด “คนละ” จะขึ้นตรงนี้</p>';
   }
@@ -2944,26 +2950,53 @@ var qrcode = function() {
   $('menuBtn').onclick = () => menu.hidden = false;
   document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.hidden = true; }));
   ['copyBtn', 'helpBtn'].forEach(id => $(id).addEventListener('click', () => { menu.hidden = true; if (id === 'helpBtn') showView('calc'); }));
-  $('shareBtn').onclick = () => {
+  $('shareBtn').onclick = async () => {
     menu.hidden = true;
-    const rows = K.rows().map(r => [r.querySelector('input').value, r.querySelector('.res').textContent, r.querySelector('.res').classList.contains('var')])
+    try { await Promise.all([document.fonts.load("40px 'JetBrains Mono'"), document.fonts.load("600 40px 'JetBrains Mono'"), document.fonts.load("52px 'IBM Plex Sans Thai'")]); } catch (e) {}
+    const rows = K.rows().map(r => [r.querySelector('textarea').value, r.querySelector('.res').textContent, r.querySelector('.res').classList.contains('var')])
       .filter(r => r[0].trim());
-    const light = document.body.classList.contains('light'), W = 1080, lh = 96, H = 260 + rows.length * lh + 140;
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    const W = 1080, PAD = 72, cv = document.createElement('canvas'), g = cv.getContext('2d');
     const col = n => getComputedStyle(document.body).getPropertyValue(n).trim();
-    g.fillStyle = col('--bg'); g.fillRect(0, 0, W, H);
-    g.font = "600 52px 'IBM Plex Sans Thai'"; g.fillStyle = col('--text'); g.fillText('คิดเลข', 64, 120);
-    const tw = g.measureText('คิดเลข').width; g.fillStyle = col('--accent'); g.fillText('พอดี', 64 + tw, 120);
-    rows.forEach(([src, res, isVar], i) => {
-      const y = 230 + i * lh;
-      g.fillStyle = col('--panel'); g.beginPath(); g.roundRect(40, y - 62, W - 80, 84, 20); g.fill();
-      g.textAlign = 'left'; g.font = "40px 'JetBrains Mono','IBM Plex Sans Thai'"; g.fillStyle = col('--text'); g.fillText(src, 72, y);
-      g.textAlign = 'right'; g.font = "600 40px 'JetBrains Mono'"; g.fillStyle = isVar ? col('--accent') : col('--ok'); g.fillText(res, W - 72, y);
+    const MONO = "40px 'JetBrains Mono','IBM Plex Sans Thai'", RES = "600 40px 'JetBrains Mono'";
+    // lay out: wrap long expressions on spaces; put result on its own line when it doesn't fit
+    function wrap(text, max) {
+      g.font = MONO; const out = []; let line = '';
+      for (const w of text.split(/(\s+)/)) {
+        const t = line + w;
+        if (g.measureText(t.trimEnd()).width > max && line.trim()) { out.push(line.trimEnd()); line = w.trimStart(); }
+        else line = t;
+      }
+      if (line.trim()) out.push(line.trimEnd());
+      return out;
+    }
+    const inner = W - PAD * 2, blocks = rows.map(([src, res, isVar]) => {
+      g.font = RES; const rw = g.measureText(res).width;
+      g.font = MONO; const sw = g.measureText(src).width;
+      const lines = sw + rw + 40 <= inner ? [src] : wrap(src, inner);
+      const own = !(lines.length === 1 && sw + rw + 40 <= inner);
+      return { lines, res, isVar, own, h: 30 + (lines.length + (own && res ? 1 : 0)) * 54 };
     });
+    const H = 180 + blocks.reduce((a, b) => a + b.h + 16, 0) + 110;
+    cv.width = W; cv.height = H;
+    g.fillStyle = col('--bg'); g.fillRect(0, 0, W, H);
+    g.textAlign = 'left'; g.font = "600 52px 'IBM Plex Sans Thai'"; g.fillStyle = col('--text'); g.fillText('คิดเลข', 64, 110);
+    const tw = g.measureText('คิดเลข').width; g.fillStyle = col('--accent'); g.fillText('พอดี', 64 + tw, 110);
+    let y = 160;
+    for (const b of blocks) {
+      g.fillStyle = col('--panel'); g.beginPath(); g.roundRect(40, y, W - 80, b.h, 20); g.fill();
+      let ty = y + 15 + 40;
+      g.textAlign = 'left'; g.font = MONO; g.fillStyle = col('--text');
+      b.lines.forEach((l, i) => g.fillText(l, PAD, ty + i * 54));
+      if (b.res) {
+        const ry = b.own ? ty + b.lines.length * 54 : ty;
+        g.textAlign = 'right'; g.font = RES; g.fillStyle = b.isVar ? col('--accent') : col('--ok');
+        g.fillText((b.own ? '= ' : '') + b.res, W - PAD, ry);
+      }
+      y += b.h + 16;
+    }
     g.textAlign = 'right'; g.font = "34px 'IBM Plex Sans Thai'"; g.fillStyle = col('--dim');
-    g.fillText('รวม ' + $('total').textContent, W - 72, H - 70);
+    g.fillText('รวม ' + $('total').textContent, W - PAD, H - 50);
     $('shareImg').src = cv.toDataURL('image/png'); $('shareOv').hidden = false;
-    void light;
   };
 
   /* ---------- wiring ---------- */
