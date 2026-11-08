@@ -250,7 +250,7 @@
       try{
         const v = evaluate(m ? m[2] : src, vars);
         if (v===null){ res.textContent=''; return; }
-        row._val = v; prev = v; if (isFinite(v)) total += v;
+        row._val = v; prev = v; if (isFinite(v) && !m) total += v;
         if (m){ vars[m[1]] = v; res.classList.add('var'); }
         res.textContent = fmt(v);
       }catch(e){
