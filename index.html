@@ -36,7 +36,7 @@
   .res{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--ok);white-space:nowrap;
     padding:3px 8px;border-radius:8px;background:rgba(127,214,164,.08);cursor:pointer;font-variant-numeric:tabular-nums}
   .res.var{color:var(--accent);background:rgba(242,163,58,.1)}
-  .res.err{color:var(--err);background:none;font-size:13px}
+  .res.sub{color:var(--accent);background:rgba(242,163,58,.1);font-size:13px}  .row.head{margin-top:6px}  .row.head textarea{font-weight:600;color:var(--accent);font-family:'IBM Plex Sans Thai',sans-serif}  .res.err{color:var(--err);background:none;font-size:13px}
   .res:empty{display:none}
   .summary{padding:6px 16px 4px;border-top:1px solid var(--line)}
   .sumrow{display:flex;align-items:baseline;gap:10px}
@@ -64,6 +64,17 @@
   .help{color:var(--dim);font-size:12px;padding:8px 14px;margin:0 10px 6px;line-height:1.5;background:var(--panel);border-radius:10px}
   .help[hidden]{display:none}
 
+  .sheetbar{display:flex;gap:6px;align-items:center;padding:0 10px 4px}
+  .sbtn{background:none;border:0;color:var(--text);font:inherit;font-size:14px;font-weight:600;padding:4px 6px;border-radius:8px;cursor:pointer;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sbtn.add{margin-left:auto;color:var(--accent);font-weight:500}
+  .sitem{display:flex;align-items:center;gap:8px;background:var(--key);border-radius:12px;padding:10px 12px;margin:6px 0;cursor:pointer}
+  .sitem.cur{outline:2px solid var(--accent)}
+  .sitem .sm{flex:1;min-width:0}
+  .sitem .sn{font-size:15px;font-weight:600}
+  .sitem .sp{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sitem .st{font-family:'JetBrains Mono',monospace;color:var(--ok);font-size:14px}
+  .sitem button{background:none;border:0;font-size:16px;padding:6px;cursor:pointer;color:var(--dim)}
+  .sitem input{width:100%;font:inherit;font-size:15px;padding:4px 6px;border-radius:6px;border:1px solid var(--accent);background:var(--panel);color:var(--text)}
   .tabs{display:flex;gap:6px;overflow-x:auto;padding:0 10px 8px;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
   .tab{flex:none;background:none;border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:6px 13px;font:inherit;font-size:14px;cursor:pointer}
@@ -128,8 +139,9 @@
     <button class="tab" data-v="conv">แปลงหน่วย</button>
   </nav>
   <section class="view on" id="v-calc">
+  <div class="sheetbar"><button class="sbtn" id="sheetBtn">📄 <span id="sheetTitle">แผ่นที่ 1</span> ▾</button><button class="sbtn add" id="newSheetBtn">＋ แผ่นใหม่</button></div>
   <div class="sheet" id="sheet"></div>
-  <div class="help" id="help" hidden>แตะบรรทัดไหนก็แก้ได้ ผลบรรทัดอื่นอัปเดตตาม · ใส่ชื่อรายการหน้าตัวเลขได้ เช่น <b>ไข่ 65 × 45</b> · ตั้งชื่อค่าไว้ใช้ต่อด้วย <b>ชื่อ = ค่า</b> · <b>ans</b> = ผลบรรทัดก่อน · แตะผลสีเขียวเพื่อแทรกตัวเลข</div>
+  <div class="help" id="help" hidden>แตะบรรทัดไหนก็แก้ได้ ผลบรรทัดอื่นอัปเดตตาม · พิมพ์หัวข้อ (ไม่มีตัวเลข) เช่น <b>ห้องนอน</b> เพื่อแยกส่วน จะรวมยอดเฉพาะส่วนนั้นให้ · กด <b>＋ แผ่นใหม่</b> เพื่อคิดเรื่องใหม่โดยไม่ลบของเดิม · ใส่ชื่อรายการหน้าตัวเลขได้ เช่น <b>ไข่ 65 × 45</b> · ตั้งชื่อค่าไว้ใช้ต่อด้วย <b>ชื่อ = ค่า</b> · <b>ans</b> = ผลบรรทัดก่อน · แตะผลสีเขียวเพื่อแทรกตัวเลข</div>
   <div class="summary">
     <div class="sumrow">
       <div class="total">รวมทุกบรรทัด<b id="total">0</b></div>
@@ -236,6 +248,11 @@
   <div class="seg" data-g="theme"><button data-k="dark" class="on">มืด</button><button data-k="light">สว่าง</button></div>
   <h4>โหมดมือเดียว (ย่อปุ่มไปชิดข้าง)</h4>
   <div class="seg" data-g="oh"><button data-k="off" class="on">ปิด</button><button data-k="r">มือขวา</button><button data-k="l">มือซ้าย</button></div>
+</div></div>
+<div class="ov" id="sheetsOv" hidden><div class="panel">
+  <h4 style="margin-top:0">แผ่นงานทั้งหมด</h4>
+  <div id="sheetList"></div>
+  <button class="mbtn" id="newSheetBtn2" style="color:var(--accent)">＋ แผ่นใหม่</button>
 </div></div>
 <div class="ov" id="shareOv" hidden><div class="panel">
   <img id="shareImg" alt="รูปการคำนวณ">
@@ -390,14 +407,14 @@
     rows().forEach((row,i) => {
       row.querySelector('.num').textContent = i+1;
       const src = row.querySelector('textarea').value, res = row.querySelector('.res');
-      res.className = 'res'; row._val = null;
+      res.className = 'res'; row._val = null; row._head = false; row._assign = false;
       if (!src.trim() || src.trim().startsWith('#')){ res.textContent=''; return; }
       vars.ans = prev;
       const m = src.match(/^\s*([A-Za-z_฀-๿][A-Za-z0-9_฀-๿]*)\s*=\s*(.*)$/);
       try{
         const v = evalLabeled(m ? m[2] : src, vars);
-        if (v===null){ res.textContent=''; return; }
-        row._val = v; prev = v; if (isFinite(v) && !m) total += v;
+        if (v===null){ res.textContent=''; row._head = !/[0-9]/.test(src); return; }
+        row._val = v; prev = v; row._assign = !!m; if (isFinite(v) && !m) total += v;
         if (m){ vars[m[1]] = v; res.classList.add('var'); }
         res.textContent = fmt(v);
       }catch(e){
@@ -405,6 +422,12 @@
         res.textContent = e && e.unknown ? 'ไม่รู้จัก “'+e.unknown+'”' : '…';
       }
     });
+    { let head = null, sub = 0, n = 0;
+      const flush = () => { if (head){ const r = head.querySelector('.res'); r.textContent = n ? 'รวม ' + fmt(sub) : ''; r.classList.add('sub'); } };
+      rows().forEach(r => { r.classList.toggle('head', !!r._head);
+        if (r._head){ flush(); head = r; sub = 0; n = 0; }
+        else if (r._val != null && !r._assign && isFinite(r._val)){ sub += r._val; n++; } });
+      flush(); }
     document.getElementById('total').textContent = fmt(total);
     fitRows(); showSummary(); save();
   }
@@ -488,7 +511,7 @@
 
   addEventListener('resize', () => fitRows());
   try { document.fonts.ready.then(() => fitRows()); } catch(e){}
-  window.K = {fmt, bahtText, toast, rows};
+  window.K = {fmt, bahtText, toast, rows, rowEl, recompute, setActive, sheet};
 
   /* ---------- start ---------- */
   const start = load() || ['# ลองแตะแก้บรรทัดไหนก็ได้','ค่าห้อง = 3500','ค่าไฟ = 812.5','(ค่าห้อง + ค่าไฟ) ÷ 2','1250 + 7%','ans − 10%',''];
@@ -3032,6 +3055,66 @@ var qrcode = function() {
     setTimeout(() => { ta.focus(); ta.setSelectionRange(0, 0); }, 60);
     K.toast('พิมพ์ชื่อรายการ แล้วเว้นวรรค');
   });
+
+  /* ---------- sheets: several calculations kept side by side ---------- */
+  const SK = 'kidlek-sheets';
+  let S = null; try { S = JSON.parse(localStorage.getItem(SK)); } catch (e) {}
+  if (!S || !S.list || !S.list.length) S = { cur: 's1', list: [{ id: 's1', name: 'แผ่นที่ 1', lines: null, t: Date.now() }] };
+  const curSheet = () => S.list.find(x => x.id === S.cur) || S.list[0];
+  const curLines = () => K.rows().map(r => r.querySelector('textarea').value);
+  function persist() {
+    const c = curSheet(); c.lines = curLines(); c.total = $('total').textContent; S.cur = c.id;
+    try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {}
+    $('sheetTitle').textContent = c.name;
+  }
+  function openSheet(id) {
+    persist(); S.cur = id; const c = curSheet(), lines = c.lines && c.lines.length ? c.lines : [''];
+    K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l)));
+    if (lines[lines.length - 1].trim()) K.sheet.appendChild(K.rowEl(''));
+    K.recompute(); const last = K.rows()[K.rows().length - 1];
+    last.querySelector('textarea').focus(); K.setActive(last); persist(); showView('calc');
+  }
+  function newSheet() {
+    persist(); let n = 1; while (S.list.some(x => x.name === 'แผ่นที่ ' + n)) n++;
+    const id = 's' + Date.now(); S.list.push({ id, name: 'แผ่นที่ ' + n, lines: [''], t: Date.now() });
+    $('sheetsOv').hidden = true; openSheet(id); K.toast('เริ่มแผ่นใหม่ แผ่นเดิมเก็บไว้แล้ว');
+  }
+  const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let armedDel = null;
+  function renderSheets() {
+    persist();
+    $('sheetList').innerHTML = S.list.map(x => {
+      const prev = (x.lines || []).filter(l => l.trim()).slice(0, 2).join(' · ') || 'ว่าง';
+      return `<div class="sitem${x.id === S.cur ? ' cur' : ''}" data-id="${x.id}"><div class="sm"><div class="sn">${esc(x.name)}</div><div class="sp">${esc(prev)}</div></div>
+        <span class="st">${x.total || ''}</span><button data-ren="${x.id}" title="เปลี่ยนชื่อ">✏️</button><button data-del="${x.id}" title="ลบ">${armedDel === x.id ? 'ลบ?' : '🗑'}</button></div>`;
+    }).join('');
+  }
+  $('sheetBtn').onclick = () => { armedDel = null; renderSheets(); $('sheetsOv').hidden = false; };
+  $('newSheetBtn').onclick = newSheet; $('newSheetBtn2').onclick = newSheet;
+  $('sheetList').addEventListener('click', e => {
+    const ren = e.target.closest('[data-ren]'), del = e.target.closest('[data-del]'), item = e.target.closest('.sitem');
+    if (e.target.tagName === 'INPUT') return;
+    if (ren) {
+      const x = S.list.find(y => y.id === ren.dataset.ren), sn = item.querySelector('.sn');
+      sn.innerHTML = `<input value="${esc(x.name)}">`; const inp = sn.querySelector('textarea'); inp.focus(); inp.select();
+      const done = () => { x.name = inp.value.trim() || x.name; persist(); renderSheets(); };
+      inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') inp.blur(); }); inp.addEventListener('blur', done);
+      return;
+    }
+    if (del) {
+      const id = del.dataset.del;
+      if (armedDel !== id) { armedDel = id; renderSheets(); return; }
+      armedDel = null;
+      if (S.list.length === 1) { S.list[0].lines = ['']; S.cur = S.list[0].id; openSheet(S.cur); $('sheetsOv').hidden = true; return; }
+      const wasCur = id === S.cur; S.list = S.list.filter(y => y.id !== id);
+      if (wasCur) { S.cur = S.list[0].id; const c = curSheet(), lines = c.lines && c.lines.length ? c.lines : [''];
+        K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l))); K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); }
+      persist(); renderSheets(); return;
+    }
+    if (item) { $('sheetsOv').hidden = true; if (item.dataset.id !== S.cur) openSheet(item.dataset.id); }
+  });
+  addEventListener('pagehide', persist); document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+  persist();
 
   /* ---------- wiring ---------- */
   function runAll() { bill(); dates(); money(); trade(); conv(); }
