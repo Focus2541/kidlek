@@ -15,7 +15,7 @@ function out_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 function ok_(key) {
-  return SYNC_KEY !== 'เปลี่ยนเป็นรหัสของคุณ' && key === SYNC_KEY;
+  return SYNC_KEY.length >= 6 && !/[\u0E00-\u0E7F]/.test(SYNC_KEY) && key === SYNC_KEY;  // รหัสต้องยาว ≥ 6 ตัวและไม่ใช่ข้อความไทยตัวอย่าง
 }
 
 function doGet(e) {
