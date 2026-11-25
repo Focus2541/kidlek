@@ -3245,7 +3245,7 @@ var qrcode = function() {
   setInterval(() => { persist(); if (dirty) sync(); }, 15000);
   document.addEventListener('visibilitychange', () => { persist(); sync(); });
   if (cfg.url) { $('syUrl').value = cfg.url; $('syKey').value = cfg.key || ''; syStatus(cfg.last ? 'ซิงก์ล่าสุด ' + new Date(cfg.last).toLocaleString('th-TH') : 'ตั้งค่าแล้ว'); setTimeout(sync, 800); }
-  $('sySave').onclick = () => { cfg.url = $('syUrl').value.trim(); cfg.key = $('syKey').value.trim(); store('sync', JSON.stringify(cfg)); sync(true); };
+  $('sySave').onclick = () => { cfg.url = $('syUrl').value.trim(); cfg.key = $('syKey').value.replace(/^\s*(const\s+)?SYNC_KEY\s*=\s*/i, '').trim().replace(/;+$/, '').trim().replace(/^['"`‘’“”]+|['"`‘’“”]+$/g, '').trim(); $('syKey').value = cfg.key; store('sync', JSON.stringify(cfg)); sync(true); };
 
   /* ---------- send one sheet by QR / link ---------- */
   const b64u = u8 => { let b = ''; u8.forEach(x => b += String.fromCharCode(x)); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
