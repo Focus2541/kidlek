@@ -245,6 +245,7 @@
 <div class="toast" id="toast"></div>
 <div class="ov" id="menu" hidden><div class="panel">
   <button class="mbtn" id="copyBtn">คัดลอกการคำนวณ</button>
+  <button class="mbtn" id="syncBtn">🔄 ซิงก์ / ส่งไปเครื่องอื่น</button>
   <button class="mbtn" id="shareBtn">แชร์เป็นรูป</button>
   <button class="mbtn" id="helpBtn">วิธีใช้หน้าคิดเลข</button>
   <button class="mbtn" id="clearBtn">ล้างทั้งหมด</button>
@@ -259,6 +260,18 @@
   <div id="sheetList"></div>
   <p class="note">แตะยอดสีเขียวของแผ่นไหน = ใส่ยอดนั้นลงบรรทัดใหม่ในแผ่นที่เปิดอยู่</p>
   <button class="mbtn" id="newSheetBtn2" style="color:var(--accent)">＋ แผ่นใหม่</button>
+</div></div>
+<div class="ov" id="syncOv" hidden><div class="panel">
+  <h4 style="margin-top:0">ส่งแผ่นนี้ไปอีกเครื่อง</h4>
+  <p class="note">สแกน QR ด้วยกล้องมือถือ (ไม่ใช่แอปธนาคาร) หรือคัดลอกลิงก์ส่งทาง LINE — แผ่นจะถูกเพิ่มเป็นแผ่นใหม่ในเครื่องปลายทาง</p>
+  <div class="qrbox" id="shareQr"></div>
+  <button class="mbtn" id="copyLink">คัดลอกลิงก์แผ่นนี้</button>
+  <h4>ซิงก์อัตโนมัติทุกเครื่อง (Google ของคุณเอง)</h4>
+  <div class="f"><label for="syUrl">ลิงก์ Web app</label><input id="syUrl" type="text" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:12px;text-align:left"></div>
+  <div class="f"><label for="syKey">รหัสซิงก์</label><input id="syKey" type="text" placeholder="รหัสเดียวกับใน Code.gs" style="text-align:left"></div>
+  <button class="mbtn" id="sySave" style="color:var(--accent)">บันทึกและซิงก์ตอนนี้</button>
+  <p class="note" id="syStatus">ยังไม่ได้ตั้งค่า</p>
+  <p class="note">ตั้งค่าครั้งเดียว: ดูวิธีที่ <a href="https://github.com/Focus2541/kidlek/blob/main/sync/README.md" target="_blank" style="color:var(--accent)">github.com/Focus2541/kidlek/sync</a> แล้วใส่ลิงก์+รหัสเดียวกันทั้งคอมและมือถือ</p>
 </div></div>
 <div class="ov" id="shareOv" hidden><div class="panel">
   <img id="shareImg" alt="รูปการคำนวณ">
@@ -3065,11 +3078,17 @@ var qrcode = function() {
   /* ---------- sheets: several calculations kept side by side ---------- */
   const SK = 'kidlek-sheets';
   let S = null; try { S = JSON.parse(localStorage.getItem(SK)); } catch (e) {}
-  if (!S || !S.list || !S.list.length) S = { cur: 's1', list: [{ id: 's1', name: 'แผ่นที่ 1', lines: null, t: Date.now() }] };
+  if (!S || !S.list || !S.list.length) { const id = 's' + Date.now() + Math.random().toString(36).slice(2, 6); S = { cur: id, list: [{ id, name: 'แผ่นที่ 1', lines: null, t: Date.now() }] }; }
   const curSheet = () => S.list.find(x => x.id === S.cur) || S.list[0];
   const curLines = () => K.rows().map(r => r.querySelector('textarea').value);
+  S.del = S.del || {};
+  let dirty = false;
   function persist() {
-    const c = curSheet(); c.lines = curLines(); c.total = $('total').textContent; S.cur = c.id;
+    const c = curSheet(), L = curLines();
+    const norm = a => { a = (a || []).slice(); while (a.length && !String(a[a.length - 1]).trim()) a.pop(); return JSON.stringify(a); };
+    if (norm(L) !== norm(c.lines)) { c.t = Date.now(); dirty = true; }
+    c.lines = L;
+    c.total = $('total').textContent; S.cur = c.id;
     try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {}
     $('sheetTitle').textContent = c.name;
   }
@@ -3119,7 +3138,7 @@ var qrcode = function() {
     if (ren) {
       const x = S.list.find(y => y.id === ren.dataset.ren), sn = item.querySelector('.sn');
       sn.innerHTML = `<input value="${esc(x.name)}">`; const inp = sn.querySelector('textarea'); inp.focus(); inp.select();
-      const done = () => { x.name = inp.value.trim() || x.name; persist(); renderSheets(); };
+      const done = () => { const n = inp.value.trim(); if (n && n !== x.name) { x.name = n; x.t = Date.now(); dirty = true; } persist(); renderSheets(); };
       inp.addEventListener('keydown', ev => { if (ev.key === 'Enter') inp.blur(); }); inp.addEventListener('blur', done);
       return;
     }
@@ -3128,13 +3147,88 @@ var qrcode = function() {
       if (armedDel !== id) { armedDel = id; renderSheets(); return; }
       armedDel = null;
       if (S.list.length === 1) { S.list[0].lines = ['']; S.cur = S.list[0].id; openSheet(S.cur); $('sheetsOv').hidden = true; return; }
-      const wasCur = id === S.cur; S.list = S.list.filter(y => y.id !== id);
+      const wasCur = id === S.cur; S.list = S.list.filter(y => y.id !== id); S.del[id] = Date.now(); dirty = true;
       if (wasCur) { S.cur = S.list[0].id; const c = curSheet(), lines = c.lines && c.lines.length ? c.lines : [''];
         K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l))); K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); }
       persist(); renderSheets(); return;
     }
     if (item) { $('sheetsOv').hidden = true; if (item.dataset.id !== S.cur) openSheet(item.dataset.id); }
   });
+  /* ---------- sync between devices ---------- */
+  function loadDom() {
+    const c = curSheet(), lines = c.lines && c.lines.length ? c.lines.slice() : [''];
+    if (lines[lines.length - 1].trim()) lines.push('');
+    K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l)));
+    K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); $('sheetTitle').textContent = c.name;
+  }
+  function merge(r) {
+    Object.entries(r.del || {}).forEach(([id, t]) => { S.del[id] = Math.max(S.del[id] || 0, t); });
+    const map = {}; S.list.forEach(x => map[x.id] = x);
+    (r.list || []).forEach(x => { const m = map[x.id]; if (!m || (x.t || 0) > (m.t || 0)) map[x.id] = x; });
+    S.list = Object.values(map).filter(x => !(S.del[x.id] >= (x.t || 0)));
+    if (!S.list.length) S.list = [{ id: 's' + Date.now(), name: 'แผ่นที่ 1', lines: [''], t: Date.now() }];
+  }
+  let cfg = {}; try { cfg = JSON.parse(load('sync')) || {}; } catch (e) {}
+  const syStatus = t => { $('syStatus').textContent = t; };
+  let syncing = false;
+  async function sync(manual) {
+    if (!cfg.url || !cfg.key) { if (manual) syStatus('ใส่ลิงก์ Web app และรหัสก่อน'); return; }
+    if (syncing) return; syncing = true; persist(); syStatus('กำลังซิงก์…');
+    if (!cfg.last) S.list.forEach(x => { if (x.id === 's1') { const n = 's' + Date.now() + Math.random().toString(36).slice(2, 6); if (S.cur === x.id) S.cur = n; x.id = n; } });  // first sync: never collide with the other device's first sheet
+    try {
+      const r = await (await fetch(cfg.url + '?key=' + encodeURIComponent(cfg.key), { cache: 'no-store' })).json();
+      if (r.error) throw new Error(r.error === 'key' ? 'รหัสซิงก์ไม่ตรงกับใน Code.gs' : r.error);
+      const before = JSON.stringify(curSheet()), curId = S.cur;
+      if (r.data) merge(r.data);
+      if (!S.list.some(x => x.id === curId)) S.cur = S.list[0].id;
+      await fetch(cfg.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ key: cfg.key, data: { list: S.list, del: S.del } }) });
+      if (JSON.stringify(curSheet()) !== before) loadDom();
+      dirty = false; try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {}
+      cfg.last = Date.now(); store('sync', JSON.stringify(cfg));
+      syStatus('ซิงก์แล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' · ' + S.list.length + ' แผ่น');
+      if (manual) K.toast('ซิงก์แล้ว');
+    } catch (e) {
+      syStatus('ซิงก์ไม่สำเร็จ: ' + (navigator.onLine ? (e.message || 'เชื่อมต่อไม่ได้') : 'ไม่มีเน็ต') + ' (ของในเครื่องยังอยู่ครบ)');
+    } finally { syncing = false; }
+  }
+  setInterval(() => { persist(); if (dirty) sync(); }, 15000);
+  document.addEventListener('visibilitychange', () => { persist(); sync(); });
+  if (cfg.url) { $('syUrl').value = cfg.url; $('syKey').value = cfg.key || ''; syStatus(cfg.last ? 'ซิงก์ล่าสุด ' + new Date(cfg.last).toLocaleString('th-TH') : 'ตั้งค่าแล้ว'); setTimeout(sync, 800); }
+  $('sySave').onclick = () => { cfg.url = $('syUrl').value.trim(); cfg.key = $('syKey').value.trim(); store('sync', JSON.stringify(cfg)); sync(true); };
+
+  /* ---------- send one sheet by QR / link ---------- */
+  const b64u = u8 => { let b = ''; u8.forEach(x => b += String.fromCharCode(x)); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  async function pack(o) {
+    const st = new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return b64u(new Uint8Array(await new Response(st).arrayBuffer()));
+  }
+  async function unpack(t) {
+    const bin = atob(t.replace(/-/g, '+').replace(/_/g, '/'));
+    const st = new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return JSON.parse(await new Response(st).text());
+  }
+  let shareLink = '';
+  $('syncBtn').onclick = async () => {
+    menu.hidden = true; persist(); $('syncOv').hidden = false;
+    const c = curSheet();
+    try {
+      shareLink = location.origin + location.pathname + '?s=' + await pack({ n: c.name, l: (c.lines || []).filter(l => l.trim()) });
+      const q = qrcode(0, 'L'); q.addData(shareLink); q.make();
+      $('shareQr').innerHTML = q.createSvgTag({ cellSize: 4, margin: 3, scalable: true }) + `<div class="note">${esc(c.name)}</div>`;
+    } catch (e) { $('shareQr').innerHTML = '<p class="note">แผ่นนี้ยาวเกินกว่าจะใส่ใน QR ได้ ใช้ “คัดลอกลิงก์” แทน</p>'; }
+  };
+  $('copyLink').onclick = async () => { try { await navigator.clipboard.writeText(shareLink); K.toast('คัดลอกลิงก์แล้ว ส่งทาง LINE ได้เลย'); } catch (e) { K.toast('คัดลอกไม่ได้'); } };
+  (async () => {
+    const t = new URLSearchParams(location.search).get('s'); if (!t) return;
+    try {
+      const o = await unpack(t), id = 's' + Date.now();
+      S.list.push({ id, name: (o.n || 'แผ่น') + ' (รับมา)', lines: (o.l || []).concat(''), t: Date.now() });
+      dirty = true; openSheet(id); K.toast('รับแผ่น “' + (o.n || '') + '” แล้ว');
+    } catch (e) { K.toast('ลิงก์แผ่นงานเสีย เปิดไม่ได้'); }
+    history.replaceState(null, '', location.pathname);
+  })();
+
   addEventListener('pagehide', persist); document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
   persist();
 
