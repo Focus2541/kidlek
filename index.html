@@ -67,6 +67,10 @@
   .sheetbar{display:flex;gap:6px;align-items:center;padding:0 10px 4px}
   .sbtn{background:none;border:0;color:var(--text);font:inherit;font-size:14px;font-weight:600;padding:4px 6px;border-radius:8px;cursor:pointer;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sbtn.add{margin-left:auto;color:var(--accent);font-weight:500}
+  .grand{display:flex;align-items:center;gap:10px;background:var(--key2);border-radius:12px;padding:12px;margin-bottom:8px}
+  .grand .gl{flex:1;font-size:14px;color:var(--dim)}
+  .grand .gv{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ok)}
+  .grand button,.sitem .st{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 10px;cursor:pointer;font:inherit;font-size:13px;color:var(--accent)}
   .sitem{display:flex;align-items:center;gap:8px;background:var(--key);border-radius:12px;padding:10px 12px;margin:6px 0;cursor:pointer}
   .sitem.cur{outline:2px solid var(--accent)}
   .sitem .sm{flex:1;min-width:0}
@@ -251,7 +255,9 @@
 </div></div>
 <div class="ov" id="sheetsOv" hidden><div class="panel">
   <h4 style="margin-top:0">แผ่นงานทั้งหมด</h4>
+  <div class="grand" id="grand"></div>
   <div id="sheetList"></div>
+  <p class="note">แตะยอดสีเขียวของแผ่นไหน = ใส่ยอดนั้นลงบรรทัดใหม่ในแผ่นที่เปิดอยู่</p>
   <button class="mbtn" id="newSheetBtn2" style="color:var(--accent)">＋ แผ่นใหม่</button>
 </div></div>
 <div class="ov" id="shareOv" hidden><div class="panel">
@@ -511,7 +517,7 @@
 
   addEventListener('resize', () => fitRows());
   try { document.fonts.ready.then(() => fitRows()); } catch(e){}
-  window.K = {fmt, bahtText, toast, rows, rowEl, recompute, setActive, sheet};
+  window.K = {fmt, bahtText, toast, rows, rowEl, recompute, setActive, sheet, insert};
 
   /* ---------- start ---------- */
   const start = load() || ['# ลองแตะแก้บรรทัดไหนก็ได้','ค่าห้อง = 3500','ค่าไฟ = 812.5','(ค่าห้อง + ค่าไฟ) ÷ 2','1250 + 7%','ans − 10%',''];
@@ -3083,15 +3089,31 @@ var qrcode = function() {
   let armedDel = null;
   function renderSheets() {
     persist();
+    const num = t => { const v = parseFloat(String(t || '').replace(/,/g, '')); return isFinite(v) ? v : 0; };
+    const grand = S.list.reduce((a, x) => a + num(x.total), 0);
+    $('grand').innerHTML = `<span class="gl">รวมทุกแผ่น (${S.list.length} แผ่น)</span><span class="gv">${K.fmt(grand)}</span>` +
+      (S.list.length > 1 ? `<button data-ins="all">ดึงยอดแผ่นอื่นมาแผ่นนี้</button>` : '');
     $('sheetList').innerHTML = S.list.map(x => {
       const prev = (x.lines || []).filter(l => l.trim()).slice(0, 2).join(' · ') || 'ว่าง';
       return `<div class="sitem${x.id === S.cur ? ' cur' : ''}" data-id="${x.id}"><div class="sm"><div class="sn">${esc(x.name)}</div><div class="sp">${esc(prev)}</div></div>
-        <span class="st">${x.total || ''}</span><button data-ren="${x.id}" title="เปลี่ยนชื่อ">✏️</button><button data-del="${x.id}" title="ลบ">${armedDel === x.id ? 'ลบ?' : '🗑'}</button></div>`;
+        ${x.total ? `<button class="st" data-ins="${x.id}">${x.total}</button>` : ''}<button data-ren="${x.id}" title="เปลี่ยนชื่อ">✏️</button><button data-del="${x.id}" title="ลบ">${armedDel === x.id ? 'ลบ?' : '🗑'}</button></div>`;
     }).join('');
   }
   $('sheetBtn').onclick = () => { armedDel = null; renderSheets(); $('sheetsOv').hidden = false; };
   $('newSheetBtn').onclick = newSheet; $('newSheetBtn2').onclick = newSheet;
+  function insertTotal(id) {
+    const num = t => parseFloat(String(t || '').replace(/,/g, '')) || 0;
+    let val, label;
+    if (id === 'all') { val = S.list.filter(x => x.id !== S.cur).reduce((a, x) => a + num(x.total), 0); label = 'รวมแผ่นอื่นทั้งหมด'; }
+    else { const x = S.list.find(y => y.id === id); val = num(x.total); label = x.name; }
+    $('sheetsOv').hidden = true;
+    const act = document.querySelector('.row.active textarea');
+    if (act && act.value.trim()) document.querySelector('.k[data-act=nl]').click();
+    setTimeout(() => { K.insert(String(parseFloat(val.toPrecision(12))) + ' # ' + label); K.toast('ใส่ยอด ' + label + ' แล้ว'); }, 30);
+  }
+  $('grand').addEventListener('click', e => { const t = e.target.closest('[data-ins]'); if (t) insertTotal(t.dataset.ins); });
   $('sheetList').addEventListener('click', e => {
+    const ins = e.target.closest('[data-ins]'); if (ins) { insertTotal(ins.dataset.ins); return; }
     const ren = e.target.closest('[data-ren]'), del = e.target.closest('[data-del]'), item = e.target.closest('.sitem');
     if (e.target.tagName === 'INPUT') return;
     if (ren) {
