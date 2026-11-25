@@ -66,7 +66,10 @@
 
   .sheetbar{display:flex;gap:6px;align-items:center;padding:0 10px 4px}
   .sbtn{background:none;border:0;color:var(--text);font:inherit;font-size:14px;font-weight:600;padding:4px 6px;border-radius:8px;cursor:pointer;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .sbtn.add{margin-left:auto;color:var(--accent);font-weight:500}
+  .sbtn.ur{font-size:20px;line-height:1;padding:2px 10px;color:var(--accent);margin-left:2px}
+  .sbtn.ur:disabled{color:var(--line);cursor:default}
+  #undoBtn{margin-left:auto}
+  .sbtn.add{color:var(--accent);font-weight:500}
   .grand{display:flex;align-items:center;gap:10px;background:var(--key2);border-radius:12px;padding:12px;margin-bottom:8px}
   .grand .gl{flex:1;font-size:14px;color:var(--dim)}
   .grand .gv{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--ok)}
@@ -143,7 +146,7 @@
     <button class="tab" data-v="conv">แปลงหน่วย</button>
   </nav>
   <section class="view on" id="v-calc">
-  <div class="sheetbar"><button class="sbtn" id="sheetBtn">📄 <span id="sheetTitle">แผ่นที่ 1</span> ▾</button><button class="sbtn add" id="newSheetBtn">＋ แผ่นใหม่</button></div>
+  <div class="sheetbar"><button class="sbtn" id="sheetBtn">📄 <span id="sheetTitle">แผ่นที่ 1</span> ▾</button><button class="sbtn ur" id="undoBtn" title="ย้อนกลับ (Ctrl+Z)" disabled>↶</button><button class="sbtn ur" id="redoBtn" title="ทำซ้ำ (Ctrl+Y)" disabled>↷</button><button class="sbtn add" id="newSheetBtn">＋ แผ่นใหม่</button></div>
   <div class="sheet" id="sheet"></div>
   <div class="help" id="help" hidden>แตะบรรทัดไหนก็แก้ได้ ผลบรรทัดอื่นอัปเดตตาม · พิมพ์หัวข้อ (ไม่มีตัวเลข) เช่น <b>ห้องนอน</b> เพื่อแยกส่วน จะรวมยอดเฉพาะส่วนนั้นให้ · กด <b>＋ แผ่นใหม่</b> เพื่อคิดเรื่องใหม่โดยไม่ลบของเดิม · ใส่ชื่อรายการหน้าตัวเลขได้ เช่น <b>ไข่ 65 × 45</b> · ตั้งชื่อค่าไว้ใช้ต่อด้วย <b>ชื่อ = ค่า</b> · <b>ans</b> = ผลบรรทัดก่อน · แตะผลสีเขียวเพื่อแทรกตัวเลข</div>
   <div class="summary">
@@ -258,6 +261,7 @@
   <h4 style="margin-top:0">แผ่นงานทั้งหมด</h4>
   <div class="grand" id="grand"></div>
   <div id="sheetList"></div>
+  <button class="mbtn" id="restoreSheet" hidden style="color:var(--accent)"></button>
   <p class="note">แตะยอดสีเขียวของแผ่นไหน = ใส่ยอดนั้นลงบรรทัดใหม่ในแผ่นที่เปิดอยู่</p>
   <button class="mbtn" id="newSheetBtn2" style="color:var(--accent)">＋ แผ่นใหม่</button>
 </div></div>
@@ -448,7 +452,7 @@
         else if (r._val != null && !r._assign && isFinite(r._val)){ sub += r._val; n++; } });
       flush(); }
     document.getElementById('total').textContent = fmt(total);
-    fitRows(); showSummary(); save();
+    fitRows(); showSummary(); save(); if (window.onCalcChange) window.onCalcChange();
   }
   function fitRows(){
     rows().forEach(r => { const i = r.querySelector('textarea'), res = r.querySelector('.res');
@@ -3105,9 +3109,11 @@ var qrcode = function() {
     $('sheetsOv').hidden = true; openSheet(id); K.toast('เริ่มแผ่นใหม่ แผ่นเดิมเก็บไว้แล้ว');
   }
   const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  let armedDel = null;
+  let armedDel = null, lastDeleted = null;
   function renderSheets() {
     persist();
+    $('restoreSheet').hidden = !lastDeleted;
+    if (lastDeleted) $('restoreSheet').textContent = '↶ เอาแผ่น “' + lastDeleted.name + '” ที่เพิ่งลบกลับมา';
     const num = t => { const v = parseFloat(String(t || '').replace(/,/g, '')); return isFinite(v) ? v : 0; };
     const grand = S.list.reduce((a, x) => a + num(x.total), 0);
     $('grand').innerHTML = `<span class="gl">รวมทุกแผ่น (${S.list.length} แผ่น)</span><span class="gv">${K.fmt(grand)}</span>` +
@@ -3118,6 +3124,10 @@ var qrcode = function() {
         ${x.total ? `<button class="st" data-ins="${x.id}">${x.total}</button>` : ''}<button data-ren="${x.id}" title="เปลี่ยนชื่อ">✏️</button><button data-del="${x.id}" title="ลบ">${armedDel === x.id ? 'ลบ?' : '🗑'}</button></div>`;
     }).join('');
   }
+  $('restoreSheet').onclick = () => {
+    if (!lastDeleted) return; const x = lastDeleted; lastDeleted = null;
+    delete S.del[x.id]; x.t = Date.now(); S.list.push(x); dirty = true; renderSheets(); K.toast('เอาแผ่นกลับมาแล้ว');
+  };
   $('sheetBtn').onclick = () => { armedDel = null; renderSheets(); $('sheetsOv').hidden = false; };
   $('newSheetBtn').onclick = newSheet; $('newSheetBtn2').onclick = newSheet;
   function insertTotal(id) {
@@ -3147,19 +3157,58 @@ var qrcode = function() {
       if (armedDel !== id) { armedDel = id; renderSheets(); return; }
       armedDel = null;
       if (S.list.length === 1) { S.list[0].lines = ['']; S.cur = S.list[0].id; openSheet(S.cur); $('sheetsOv').hidden = true; return; }
-      const wasCur = id === S.cur; S.list = S.list.filter(y => y.id !== id); S.del[id] = Date.now(); dirty = true;
+      const wasCur = id === S.cur; lastDeleted = S.list.find(y => y.id === id); S.list = S.list.filter(y => y.id !== id); S.del[id] = Date.now(); dirty = true;
       if (wasCur) { S.cur = S.list[0].id; const c = curSheet(), lines = c.lines && c.lines.length ? c.lines : [''];
-        K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l))); K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); }
+        K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l))); K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); resetHist(); }
       persist(); renderSheets(); return;
     }
     if (item) { $('sheetsOv').hidden = true; if (item.dataset.id !== S.cur) openSheet(item.dataset.id); }
   });
+  /* ---------- undo / redo ---------- */
+  let hist = [], hi = -1, pend = null, applying = false;
+  const snap = () => JSON.stringify(curLines());
+  function capture() {
+    clearTimeout(pend); pend = null; if (applying) return;
+    const cur = snap(); if (hist[hi] === cur) return;
+    hist = hist.slice(0, hi + 1); hist.push(cur); if (hist.length > 150) hist.shift(); hi = hist.length - 1; urBtns();
+  }
+  function resetHist() { clearTimeout(pend); pend = null; hist = [snap()]; hi = 0; urBtns(); }
+  function urBtns() { $('undoBtn').disabled = hi <= 0; $('redoBtn').disabled = hi >= hist.length - 1; }
+  window.onCalcChange = () => { if (applying) return; clearTimeout(pend); pend = setTimeout(capture, 600); urBtns_soon(); };
+  const urBtns_soon = () => { $('undoBtn').disabled = false; };
+  function applySnap(str) {
+    const prev = curLines(), next = JSON.parse(str);
+    let i = 0; while (i < prev.length && i < next.length && prev[i] === next[i]) i++;
+    applying = true;
+    const lines = next.length ? next : [''];
+    K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l)));
+    K.recompute(); applying = false;
+    const row = K.rows()[Math.min(i, K.rows().length - 1)], ta = row.querySelector('textarea');
+    ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); K.setActive(row);
+    row.scrollIntoView({ block: 'nearest' }); urBtns();
+  }
+  function undo() { if (pend) capture(); if (hi <= 0) return; hi--; applySnap(hist[hi]); K.toast('ย้อนกลับแล้ว'); }
+  function redo() { if (pend) capture(); if (hi >= hist.length - 1) return; hi++; applySnap(hist[hi]); }
+  ['undoBtn', 'redoBtn'].forEach(id => $(id).addEventListener('pointerdown', e => e.preventDefault()));
+  $('undoBtn').onclick = undo; $('redoBtn').onclick = redo;
+  document.addEventListener('keydown', e => {
+    if (!$('v-calc').classList.contains('on') || !(e.ctrlKey || e.metaKey)) return;
+    const k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+  });
+  $('clearBtn').addEventListener('click', () => setTimeout(() => {
+    if (!$('clearBtn').classList.contains('warn')) { menu.hidden = true; capture(); K.toast('ล้างแล้ว · กด ↶ เพื่อย้อนกลับ'); }
+  }, 0));
+  // history restarts whenever another sheet is loaded
+  const _openSheet = openSheet; openSheet = id => { _openSheet(id); resetHist(); };
+
   /* ---------- sync between devices ---------- */
   function loadDom() {
     const c = curSheet(), lines = c.lines && c.lines.length ? c.lines.slice() : [''];
     if (lines[lines.length - 1].trim()) lines.push('');
     K.sheet.innerHTML = ''; lines.forEach(l => K.sheet.appendChild(K.rowEl(l)));
-    K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); $('sheetTitle').textContent = c.name;
+    K.recompute(); K.setActive(K.rows()[K.rows().length - 1]); $('sheetTitle').textContent = c.name; resetHist();
   }
   function merge(r) {
     Object.entries(r.del || {}).forEach(([id, t]) => { S.del[id] = Math.max(S.del[id] || 0, t); });
@@ -3229,6 +3278,7 @@ var qrcode = function() {
     history.replaceState(null, '', location.pathname);
   })();
 
+  setTimeout(resetHist, 50);
   addEventListener('pagehide', persist); document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
   persist();
 
