@@ -412,8 +412,10 @@
     showSummary(); save();
   }
   function showSummary(){
-    const v = active ? active._val : null;
+    let v = active ? active._val : null, from = null;
+    if (v==null && active){ let r = active.previousSibling; while (r && r._val==null) r = r.previousSibling; if (r){ v = r._val; from = r; } }
     document.getElementById('big').textContent = v==null ? '0' : fmt(v);
+    document.getElementById('big').style.opacity = from ? .55 : 1;
     document.getElementById('words').textContent = v==null ? '' : bahtText(v);
   }
   function newLine(after=active, text=''){
