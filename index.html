@@ -3235,14 +3235,15 @@ var qrcode = function() {
         body: JSON.stringify({ key: cfg.key, data: { list: S.list, del: S.del } }) });
       if (JSON.stringify(curSheet()) !== before) loadDom();
       dirty = false; try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {}
-      cfg.last = Date.now(); store('sync', JSON.stringify(cfg));
+      cfg.last = lastPull = Date.now(); store('sync', JSON.stringify(cfg));
       syStatus('ซิงก์แล้ว ' + new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' · ' + S.list.length + ' แผ่น');
       if (manual) K.toast('ซิงก์แล้ว');
     } catch (e) {
       syStatus('ซิงก์ไม่สำเร็จ: ' + (navigator.onLine ? (e.message || 'เชื่อมต่อไม่ได้') : 'ไม่มีเน็ต') + ' (ของในเครื่องยังอยู่ครบ)');
     } finally { syncing = false; }
   }
-  setInterval(() => { persist(); if (dirty) sync(); }, 15000);
+  let lastPull = 0;
+  setInterval(() => { persist(); if (dirty || (!document.hidden && Date.now() - lastPull > 60000)) sync(); }, 15000);
   document.addEventListener('visibilitychange', () => { persist(); sync(); });
   if (cfg.url) { $('syUrl').value = cfg.url; $('syKey').value = cfg.key || ''; syStatus(cfg.last ? 'ซิงก์ล่าสุด ' + new Date(cfg.last).toLocaleString('th-TH') : 'ตั้งค่าแล้ว'); setTimeout(sync, 800); }
   $('sySave').onclick = () => { cfg.url = $('syUrl').value.trim(); cfg.key = $('syKey').value.replace(/^\s*(const\s+)?SYNC_KEY\s*=\s*/i, '').trim().replace(/;+$/, '').trim().replace(/^['"`‘’“”]+|['"`‘’“”]+$/g, '').trim(); $('syKey').value = cfg.key; store('sync', JSON.stringify(cfg)); sync(true); };
