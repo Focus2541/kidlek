@@ -355,12 +355,13 @@
 
   function evalLabeled(src, vars){
     let body = src; const h = body.indexOf('#'); if (h > 0) body = body.slice(0, h);
+    body = body.replace(/\s*=\s*$/, '');                // trailing '=' like a normal calculator
     const c = body.match(/^\s*([^:：=\d(]+?)\s*[:：]\s*(.*)$/); if (c) body = c[2];
     try { return evaluate(body, vars); } catch(e){
       if (!/[0-9]/.test(body)) return null;            // plain text line = heading/note
       const W = '[A-Za-z_฀-๿][A-Za-z0-9_฀-๿]*';
       const lead = s => { const a = s.match(/^\s*([^\d(√.+\-−×÷*\/^%]+?)\s+([\d(√.].*)$/); return a ? a[2] : s; };          // "ไข่ 65 × 45"
-      const inner = s => s.replace(new RegExp('([0-9)%])\\s*(' + W + ')', 'g'), (m0, d, w) => (w in vars) ? m0 : d + ' ');   // "2 กล่อง × 89 บาท"
+      const inner = s => s.replace(new RegExp('([0-9)%])\\s*(' + W + ')', 'g'), (m0, d, w) => d + ' ');   // "2 กล่อง × 89 บาท"
       for (const c of [lead(body), inner(body), inner(lead(body))]) {
         if (c === body) continue;
         try { return evaluate(c, vars); } catch(_){}
